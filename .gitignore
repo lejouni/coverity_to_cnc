@@ -1,0 +1,11 @@
+# Real instance config contains internal hostnames/usernames - share instances.example.json instead.
+instances.json
+
+# Generated reports and logs - not part of the script itself.
+exports/
+*.log
+
+__pycache__/
+*.pyc
+.venv/
+venv/

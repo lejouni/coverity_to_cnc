@@ -1,0 +1,27 @@
+{
+    "streams": [{
+            "analysisVersionOverride": null,
+            "autoDeleteOnExpiry": false,
+            "componentMapName": "Default",
+            "description": "Created by Coverity CLI",
+            "language": "MIXED",
+            "enableDesktopAnalysis": true,
+            "name": "Damn_Vulnerable_CPP_Program",
+            "outdated": false,
+            "ownerAssignmentOption": "default_component_owner",
+            "pluginVersionOverride": null,
+            "primaryProjectName": "Damn_Vulnerable_CPP_Program",
+            "roleAssignments": [{
+                    "group": null,
+                    "roleAssignmentType": "user",
+                    "roleName": "streamOwner",
+                    "scope": "stream",
+                    "username": "sample_owner"
+                }
+            ],
+            "summaryExpirationDays": null,
+            "triageStoreName": "Default Triage Store",
+            "versionMismatchMessage": null
+        }
+    ]
+}

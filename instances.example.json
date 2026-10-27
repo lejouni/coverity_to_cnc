@@ -1,0 +1,18 @@
+{
+  "instances": [
+    {
+      "label": "field-test",
+      "url": "https://coverity.field-test.blackduck.com:443",
+      "username": "your_username",
+      "password_env": "COVERITY_PASSWORD_FIELDTEST",
+      "verify_ssl": true
+    },
+    {
+      "label": "prod-1",
+      "url": "https://coverity.prod.com:443",
+      "username": "svc_account",
+      "password_env": "COVERITY_PASSWORD_PROD1",
+      "verify_ssl": true
+    }
+  ]
+}
