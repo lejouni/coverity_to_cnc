@@ -40,17 +40,15 @@ def addReportMetadata(report_data):
 #
 def processInstance(instance, args):
     try:
-        projects = api_client.getAllProjects(instance, projects_file=args.projects_file)
+        projects = api_client.getAllProjects(instance)
         rows = transform.buildStreamRows(projects, instance.label)
-        projects_config = None
-        if not args.projects_file:
-            projects_config = api_client.getProjectsConfig(instance)
-            if projects_config is not None:
-                orphan_streams = api_client.getOrphanStreams(projects_config)
-                orphan_rows = transform.buildOrphanStreamRows(orphan_streams, instance.label)
-                if orphan_rows:
-                    logging.warning(f"Instance {instance.label}: {len(orphan_rows)} stream(s) have no parent project: {[row['name'] for row in orphan_rows]}")
-                rows += orphan_rows
+        projects_config = api_client.getProjectsConfig(instance)
+        if projects_config is not None:
+            orphan_streams = api_client.getOrphanStreams(projects_config)
+            orphan_rows = transform.buildOrphanStreamRows(orphan_streams, instance.label)
+            if orphan_rows:
+                logging.warning(f"Instance {instance.label}: {len(orphan_rows)} stream(s) have no parent project: {[row['name'] for row in orphan_rows]}")
+            rows += orphan_rows
         df = transform.buildStreamsDataFrame(rows)
         if projects_config is not None:
             owner_lookup = transform.buildProjectOwnerLookup(projects)
@@ -61,19 +59,18 @@ def processInstance(instance, args):
         diagnostics = api_client.getDiagnosticsOverview(instance) or {}
         unused_triage_stores_df = transform.buildUnusedTriageStoresDataFrame([])
         unused_component_maps_df = transform.buildUnusedComponentMapsDataFrame([])
-        if not args.projects_file:
-            triage_stores = api_client.getAllTriageStores(instance)
-            if triage_stores is not None:
-                unused_triage_store_rows = transform.buildUnusedTriageStoreRows(triage_stores, instance.label)
-                if unused_triage_store_rows:
-                    logging.warning(f"Instance {instance.label}: {len(unused_triage_store_rows)} triage store(s) have no associated streams: {[row['triageStoreName'] for row in unused_triage_store_rows]}")
-                unused_triage_stores_df = transform.buildUnusedTriageStoresDataFrame(unused_triage_store_rows)
-            component_maps = api_client.getAllComponentMaps(instance)
-            if component_maps is not None:
-                unused_component_map_rows = transform.buildUnusedComponentMapRows(component_maps, instance.label)
-                if unused_component_map_rows:
-                    logging.warning(f"Instance {instance.label}: {len(unused_component_map_rows)} component map(s) have no associated streams: {[row['componentMapName'] for row in unused_component_map_rows]}")
-                unused_component_maps_df = transform.buildUnusedComponentMapsDataFrame(unused_component_map_rows)
+        triage_stores = api_client.getAllTriageStores(instance)
+        if triage_stores is not None:
+            unused_triage_store_rows = transform.buildUnusedTriageStoreRows(triage_stores, instance.label)
+            if unused_triage_store_rows:
+                logging.warning(f"Instance {instance.label}: {len(unused_triage_store_rows)} triage store(s) have no associated streams: {[row['triageStoreName'] for row in unused_triage_store_rows]}")
+            unused_triage_stores_df = transform.buildUnusedTriageStoresDataFrame(unused_triage_store_rows)
+        component_maps = api_client.getAllComponentMaps(instance)
+        if component_maps is not None:
+            unused_component_map_rows = transform.buildUnusedComponentMapRows(component_maps, instance.label)
+            if unused_component_map_rows:
+                logging.warning(f"Instance {instance.label}: {len(unused_component_map_rows)} component map(s) have no associated streams: {[row['componentMapName'] for row in unused_component_map_rows]}")
+            unused_component_maps_df = transform.buildUnusedComponentMapsDataFrame(unused_component_map_rows)
         return instance.label, df, projects_df, diagnostics, unused_triage_stores_df, unused_component_maps_df, None
     except api_client.InstanceError as e:
         logging.error(f"Instance {instance.label}: {e}")

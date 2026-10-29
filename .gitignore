@@ -1,6 +1,5 @@
 # Real instance config contains internal hostnames/usernames - share instances.example.json instead.
 instances.json
-sample_*.json
 
 # Generated reports and logs - not part of the script itself.
 exports*/

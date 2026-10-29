@@ -62,7 +62,6 @@ python .\main.py --aggregate_from_dir="exports" --output_dir="exports"
 |---|---|
 | `--workers N` | Fetch N instances concurrently (default: 1, sequential). |
 | `--log_level DEBUG` | Verbose logging, including every API call made. |
-| `--projects_file path.json` | Offline mode: read projects/streams from a local JSON file instead of the API. |
 
 ## Output
 
@@ -77,22 +76,19 @@ Each instance's HTML report also includes a "Server diagnostics" section pulled 
 database size). If that call fails, the section is simply omitted - it never aborts the run.
 
 Projects with zero streams are still counted/listed, sourced from a supplemental
-`GET {url}/config/projects.json` call (skipped in `--projects_file` offline mode, which falls back
-to `/api/v2/projects` for the project list) - each real project's own `children` list there is the
+`GET {url}/config/projects.json` call - each real project's own `children` list there is the
 authoritative per-project stream count, since `/api/v2/projects` can silently drop projects/streams
 on some server versions. Streams with no parent project are read from that same response's
 built-in "Other Streams" pseudo-project (id -1) and listed in the "Orphan streams" table; that call
-failing is also non-fatal (falls back to the `/api/v2/projects`-derived project list).
+failing is non-fatal (falls back to the `/api/v2/projects`-derived project list).
 
 Triage stores with no associated project/stream are detected via a supplemental
-`GET {url}/config/triagestores.json` call (skipped in `--projects_file` offline mode) - a top-level
-entry whose `children` list is empty is reported in the "Unused triage stores" table; that call
-failing is also non-fatal.
+`GET {url}/config/triagestores.json` call - a top-level entry whose `children` list is empty is
+reported in the "Unused triage stores" table; that call failing is also non-fatal.
 
 Component maps with no associated stream are detected via a supplemental
-`GET {url}/config/componentmaps.json` call (skipped in `--projects_file` offline mode) - a
-top-level entry whose own `streams` list is empty is reported in the "Unused component maps"
-table; that call failing is also non-fatal.
+`GET {url}/config/componentmaps.json` call - a top-level entry whose own `streams` list is empty is
+reported in the "Unused component maps" table; that call failing is also non-fatal.
 
 Every report (CSV and HTML, per-instance and aggregated) is stamped with the `coverity_to_cnc`
 version and a generation timestamp, so you can tell what produced a given file and when. The

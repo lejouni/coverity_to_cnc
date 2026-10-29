@@ -62,7 +62,6 @@ def buildArgParser():
     parser.add_argument('--username', help="Username for single-instance mode. Falls back to COVERITY_USERNAME env var.", default=None)
     parser.add_argument('--password', help="Password for single-instance mode. Falls back to COVERITY_PASSWORD env var.", default=None)
     parser.add_argument('--verify_ssl', help="Verify SSL certificates in single-instance mode. default=True", type='bool', default=True)
-    parser.add_argument('--projects_file', help="Path to a local JSON file matching the /api/v2/projects?includeChildren=true&includeStreams=true response shape, used instead of calling the API (single-instance mode only, for offline testing).", default=None)
     parser.add_argument('--output_dir', help="Directory where reports are written. default=current directory", default=".")
     parser.add_argument('--workers', help="Number of instances to fetch concurrently. default=1 (sequential)", type=int, default=1)
     parser.add_argument('--log_level', help="INFO or DEBUG. default=INFO", default="INFO")
@@ -114,7 +113,7 @@ def loadInstances(args):
         raise SystemExit("Specify either --instances_file (multi-instance mode) or --url (single-instance mode).")
     username = args.username or os.environ.get('COVERITY_USERNAME') or ""
     password = resolvePassword(args.password, 'COVERITY_PASSWORD') or ""
-    if not args.projects_file and (not username or not password):
-        raise SystemExit("Single-instance mode requires --username/--password (or COVERITY_USERNAME/COVERITY_PASSWORD env vars) unless --projects_file is used.")
+    if not username or not password:
+        raise SystemExit("Single-instance mode requires --username/--password (or COVERITY_USERNAME/COVERITY_PASSWORD env vars).")
     instances.append(Instance(url=args.url, username=username, password=password, verify_ssl=args.verify_ssl))
     return instances, failed

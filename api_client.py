@@ -3,7 +3,6 @@
 # Coverity Connect REST API calls: GET /api/v2/projects (with nested streams) and the diagnostics
 # overview endpoint.
 #
-import json
 import logging
 
 import requests
@@ -17,9 +16,8 @@ class InstanceError(Exception):
 
 #
 # Returns the raw "projects" list (each with a nested "streams" list, including projects with no
-# streams) for the given instance. If projects_file is given, reads it from disk instead of
-# calling the live API (offline mode, single-instance only). One call replaces the old
-# /api/v2/streams + per-project detail lookups.
+# streams) for the given instance. One call replaces the old /api/v2/streams + per-project detail
+# lookups.
 #
 # Pages through the results via pageSize/offset: the "Retrieve all projects" docs don't list these
 # params, but some Coverity Connect versions silently cap a single response's row count, which can
@@ -27,13 +25,7 @@ class InstanceError(Exception):
 # offset is harmless if the server ignores both (the first page already has everything, so the
 # loop exits after one call) and fixes the drop if the server does honor them.
 #
-def getAllProjects(instance, projects_file=None):
-    if projects_file:
-        logging.debug(f"Loading projects from local file: {projects_file} (instance={instance.label})")
-        with open(projects_file, "r") as f:
-            data = json.load(f)
-        return data.get("projects", [])
-
+def getAllProjects(instance):
     projects = []
     seen_keys = set()
     page_size = 1000
