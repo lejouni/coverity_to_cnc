@@ -137,6 +137,33 @@ def buildProjectRows(projects, instance_label):
     return [projectToRow(project, instance_label) for project in projects]
 
 
+#
+# One row per real project (id != -1) from GET {url}/config/projects.json - len(children) is the
+# authoritative stream count (zero really means zero streams), unlike /api/v2/projects which can
+# silently drop projects/streams on some server versions (see api_client.getAllProjects). Owner is
+# enriched from the /api/v2/projects roleAssignments data by project name (owner_lookup), since
+# config/projects.json entries don't carry roleAssignments themselves.
+#
+def buildProjectRowsFromConfig(projects_config, owner_lookup, instance_label):
+    rows = []
+    for project in projects_config or []:
+        if project.get("id") == -1:
+            continue
+        name = project.get("name")
+        rows.append({
+            "primaryProjectName": name,
+            "projectDescription": project.get("description") or "",
+            "projectOwner": (owner_lookup or {}).get(name, ""),
+            "instance": instance_label,
+            "stream_count": len(project.get("children") or []),
+        })
+    return rows
+
+
+def buildProjectOwnerLookup(projects):
+    return {project.get("name"): extractRoleUsernames(project.get("roleAssignments"), "owner") for project in projects or []}
+
+
 def buildProjectsDataFrame(rows):
     return pd.DataFrame(rows)
 

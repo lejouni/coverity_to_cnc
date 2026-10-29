@@ -42,15 +42,21 @@ def processInstance(instance, args):
     try:
         projects = api_client.getAllProjects(instance, projects_file=args.projects_file)
         rows = transform.buildStreamRows(projects, instance.label)
+        projects_config = None
         if not args.projects_file:
-            orphan_streams = api_client.getOrphanStreams(instance)
-            if orphan_streams is not None:
+            projects_config = api_client.getProjectsConfig(instance)
+            if projects_config is not None:
+                orphan_streams = api_client.getOrphanStreams(projects_config)
                 orphan_rows = transform.buildOrphanStreamRows(orphan_streams, instance.label)
                 if orphan_rows:
                     logging.warning(f"Instance {instance.label}: {len(orphan_rows)} stream(s) have no parent project: {[row['name'] for row in orphan_rows]}")
                 rows += orphan_rows
         df = transform.buildStreamsDataFrame(rows)
-        projects_df = transform.buildProjectsDataFrame(transform.buildProjectRows(projects, instance.label))
+        if projects_config is not None:
+            owner_lookup = transform.buildProjectOwnerLookup(projects)
+            projects_df = transform.buildProjectsDataFrame(transform.buildProjectRowsFromConfig(projects_config, owner_lookup, instance.label))
+        else:
+            projects_df = transform.buildProjectsDataFrame(transform.buildProjectRows(projects, instance.label))
         logging.info(f"Instance {instance.label}: collected {len(df)} streams across {len(projects_df)} projects.")
         diagnostics = api_client.getDiagnosticsOverview(instance) or {}
         unused_triage_stores_df = transform.buildUnusedTriageStoresDataFrame([])

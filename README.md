@@ -76,11 +76,13 @@ Each instance's HTML report also includes a "Server diagnostics" section pulled 
 `GET {url}/diagnostics/overview.json` (commit queue state, user/group/stream/project counts and
 database size). If that call fails, the section is simply omitted - it never aborts the run.
 
-Projects with zero streams are still counted/listed (from `/api/v2/projects` directly). Streams
-with no parent project are detected via a supplemental `GET {url}/config/projects.json` call
-(skipped in `--projects_file` offline mode) - they're read from that response's built-in
-"Other Streams" pseudo-project (id -1) and listed in the "Orphan streams" table; that call
-failing is also non-fatal.
+Projects with zero streams are still counted/listed, sourced from a supplemental
+`GET {url}/config/projects.json` call (skipped in `--projects_file` offline mode, which falls back
+to `/api/v2/projects` for the project list) - each real project's own `children` list there is the
+authoritative per-project stream count, since `/api/v2/projects` can silently drop projects/streams
+on some server versions. Streams with no parent project are read from that same response's
+built-in "Other Streams" pseudo-project (id -1) and listed in the "Orphan streams" table; that call
+failing is also non-fatal (falls back to the `/api/v2/projects`-derived project list).
 
 Triage stores with no associated project/stream are detected via a supplemental
 `GET {url}/config/triagestores.json` call (skipped in `--projects_file` offline mode) - a top-level

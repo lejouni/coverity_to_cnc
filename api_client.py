@@ -70,24 +70,32 @@ def getAllProjects(instance, projects_file=None):
 
 
 #
-# Returns the list of orphan streams (no parent project) for the given instance, read from the
-# built-in "Other Streams" pseudo-project (id -1) in GET {url}/config/projects.json - the only
-# place Coverity Connect groups streams with no primaryProjectId; /api/v2/projects never returns
-# them since it only lists streams nested under a real project. Returns None on any failure
-# (non-fatal), or [] if that pseudo-project isn't present (no orphan streams).
+# Returns the raw "projects" list from GET {url}/config/projects.json, or None on any failure
+# (non-fatal). Each real project's "children" are its own streams (len(children)==0 means the
+# project truly has zero streams - the authoritative signal, since /api/v2/projects can silently
+# drop projects/streams on some server versions, see paging note above). The built-in "Other
+# Streams" pseudo-project (id -1) groups streams with no parent project instead.
 #
-def getOrphanStreams(instance):
+def getProjectsConfig(instance):
     endpoint = f"{instance.url}/config/projects.json"
     logging.debug(f"Calling Coverity URL: {endpoint} (instance={instance.label})")
     try:
         r = requests.get(endpoint, headers=HEADERS, auth=(instance.username, instance.password), verify=instance.verify_ssl)
     except requests.exceptions.RequestException as e:
-        logging.warning(f"Request for orphan streams on instance {instance.label} failed: {e}")
+        logging.warning(f"Request for projects config on instance {instance.label} failed: {e}")
         return None
     if r.status_code != 200:
-        logging.warning(f"GET {endpoint} returned status {r.status_code} for orphan streams on instance {instance.label}: {r.text}")
+        logging.warning(f"GET {endpoint} returned status {r.status_code} for projects config on instance {instance.label}: {r.text}")
         return None
-    for project in r.json().get("projects", []):
+    return r.json().get("projects", [])
+
+
+#
+# Returns the orphan streams (no parent project) from an already-fetched getProjectsConfig() list
+# - the built-in "Other Streams" pseudo-project (id -1) groups them under "children".
+#
+def getOrphanStreams(projects_config):
+    for project in projects_config or []:
         if project.get("id") == -1:
             return project.get("children", [])
     return []
