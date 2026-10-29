@@ -61,17 +61,42 @@ python .\main.py --aggregate_from_dir="exports" --output_dir="exports"
 | Flag | Purpose |
 |---|---|
 | `--workers N` | Fetch N instances concurrently (default: 1, sequential). |
-| `--skip_project_enrichment` | Skip the extra per-project detail lookup (faster, less data). |
 | `--log_level DEBUG` | Verbose logging, including every API call made. |
-| `--streams_file path.json` | Offline mode: read streams from a local JSON file instead of the API. |
+| `--projects_file path.json` | Offline mode: read projects/streams from a local JSON file instead of the API. |
 
 ## Output
 
-Each run writes, per instance, a CSV and HTML report into `--output_dir` (default `.`), plus a
-`coverity_streams_data_<label>_<timestamp>.json` file used by `--aggregate_from_dir` (see above).
-In multi-instance mode, or when using `--aggregate_from_dir`, it additionally writes an aggregated
-`..._ALL_...` CSV/HTML covering all instances together, including the cross-instance project/stream
-name collision tables.
+Each run writes, per instance, a CSV and HTML report into `--output_dir` (default `.`), plus
+`coverity_streams_data_<label>_<timestamp>.json` and `coverity_diagnostics_<label>_<timestamp>.json`
+files used by `--aggregate_from_dir` (see above). In multi-instance mode, or when using
+`--aggregate_from_dir`, it additionally writes an aggregated `..._ALL_...` CSV/HTML covering all
+instances together, including the cross-instance project/stream name collision tables.
+
+Each instance's HTML report also includes a "Server diagnostics" section pulled from
+`GET {url}/diagnostics/overview.json` (commit queue state, user/group/stream/project counts and
+database size). If that call fails, the section is simply omitted - it never aborts the run.
+
+Projects with zero streams are still counted/listed (from `/api/v2/projects` directly). Streams
+with no parent project are detected via a supplemental `GET {url}/config/projects.json` call
+(skipped in `--projects_file` offline mode) - they're read from that response's built-in
+"Other Streams" pseudo-project (id -1) and listed in the "Orphan streams" table; that call
+failing is also non-fatal.
+
+Triage stores with no associated project/stream are detected via a supplemental
+`GET {url}/config/triagestores.json` call (skipped in `--projects_file` offline mode) - a top-level
+entry whose `children` list is empty is reported in the "Unused triage stores" table; that call
+failing is also non-fatal.
+
+Component maps with no associated stream are detected via a supplemental
+`GET {url}/config/componentmaps.json` call (skipped in `--projects_file` offline mode) - a
+top-level entry whose own `streams` list is empty is reported in the "Unused component maps"
+table; that call failing is also non-fatal.
+
+Every report (CSV and HTML, per-instance and aggregated) is stamped with the `coverity_to_cnc`
+version and a generation timestamp, so you can tell what produced a given file and when. The
+aggregated `..._ALL_...` HTML report also links back to each instance's own HTML report, so you
+can jump from a cross-instance table straight to the full per-instance detail.
+
 
 ## License
 

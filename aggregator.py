@@ -28,17 +28,27 @@ def aggregateByColumnPerInstance(df, column):
     return grouped.sort_values("stream_count", ascending=False)
 
 
-def aggregateProjectsPerInstance(df):
+#
+# One row per (instance, project), including projects with zero streams, with per-project triage
+# store/component map diversity merged in from the stream rows when available.
+#
+def aggregateProjectsPerInstance(df, projects_df):
     columns = ["instance", "primaryProjectName", "stream_count", "distinct_triage_store_count", "distinct_component_map_count", "projectOwner"]
-    if df.empty:
+    if projects_df is None or projects_df.empty:
         return pd.DataFrame(columns=columns)
-    grouped = df.groupby(["instance", "primaryProjectName"]).agg(
-        stream_count=("name", "count"),
-        distinct_triage_store_count=("triageStoreName", "nunique"),
-        distinct_component_map_count=("componentMapName", "nunique"),
-        projectOwner=("projectOwner", lambda values: ";".join(sorted({v for v in values if isinstance(v, str) and v}))),
-    ).reset_index()
-    return grouped.sort_values("stream_count", ascending=False)
+    base = projects_df[["instance", "primaryProjectName", "stream_count", "projectOwner"]].copy()
+    if df is not None and not df.empty:
+        diversity = df.groupby(["instance", "primaryProjectName"]).agg(
+            distinct_triage_store_count=("triageStoreName", "nunique"),
+            distinct_component_map_count=("componentMapName", "nunique"),
+        ).reset_index()
+        base = base.merge(diversity, on=["instance", "primaryProjectName"], how="left")
+    else:
+        base["distinct_triage_store_count"] = 0
+        base["distinct_component_map_count"] = 0
+    base["distinct_triage_store_count"] = base["distinct_triage_store_count"].fillna(0).astype(int)
+    base["distinct_component_map_count"] = base["distinct_component_map_count"].fillna(0).astype(int)
+    return base[columns].sort_values("stream_count", ascending=False)
 
 
 def streamsPerInstance(df):
@@ -76,22 +86,48 @@ def aggregateCrossInstance(df, name_column):
     return grouped.sort_values(["instance_count", "stream_count"], ascending=[False, False])
 
 
-def buildAggregatedReportData(instance_dataframes, failed_instances):
+#
+# Builds a one-row-per-instance table from the server diagnostics overview dicts, each already
+# tagged with "instance" (see main.writeInstanceDiagnosticsJson).
+#
+def buildDiagnosticsByInstance(diagnostics_list):
+    columns = [
+        "instance", "numStreams", "numProjects", "numTriageStores", "numUsers", "numGroups",
+        "numComponentMaps", "dbSize", "pendingCommits", "runningCommits", "commitGateOpen",
+        "backUpInProgress", "skeletonizationInProgress", "numPendingEmails",
+    ]
+    if not diagnostics_list:
+        return pd.DataFrame(columns=columns)
+    df = pd.DataFrame(diagnostics_list)
+    for column in columns:
+        if column not in df.columns:
+            df[column] = None
+    return df[columns]
+
+
+def buildAggregatedReportData(instance_dataframes, failed_instances, diagnostics_list=None, project_dataframes=None, unused_triage_store_dataframes=None, unused_component_map_dataframes=None):
     combined = combineInstanceFrames(instance_dataframes)
+    combined_projects = combineInstanceFrames(project_dataframes or [])
+    combined_unused_triage_stores = combineInstanceFrames(unused_triage_store_dataframes or [])
+    combined_unused_component_maps = combineInstanceFrames(unused_component_map_dataframes or [])
     cross_instance_projects = aggregateCrossInstance(combined, "primaryProjectName")
     cross_instance_streams = aggregateCrossInstance(combined, "name")
-    kpis = transform.computeKpis(combined)
+    diagnostics_by_instance = buildDiagnosticsByInstance(diagnostics_list or [])
+    kpis = transform.computeKpis(combined, combined_projects)
     kpis["cross_instance_projects_count"] = len(cross_instance_projects)
     kpis["cross_instance_streams_count"] = len(cross_instance_streams)
     return {
         "streams": combined,
         "by_triage_store": aggregateByColumnPerInstance(combined, "triageStoreName"),
         "by_component_map": aggregateByColumnPerInstance(combined, "componentMapName"),
-        "by_project": aggregateProjectsPerInstance(combined),
+        "by_project": aggregateProjectsPerInstance(combined, combined_projects),
         "by_instance": streamsPerInstance(combined),
         "cross_instance_projects": cross_instance_projects,
         "cross_instance_streams": cross_instance_streams,
-        "anomalies": transform.buildAnomalies(combined),
+        "orphan_streams": transform.buildOrphanStreams(combined),
+        "unused_triage_stores": combined_unused_triage_stores,
+        "unused_component_maps": combined_unused_component_maps,
+        "diagnostics_by_instance": diagnostics_by_instance,
         "kpis": kpis,
         "failed_instances": failed_instances,
     }
